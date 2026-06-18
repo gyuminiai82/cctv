@@ -1,11 +1,9 @@
 FROM python:3.10-slim
 
 # 필요한 시스템 패키지 설치 (OpenCV 및 EasyOCR 등 이미지 처리에 필요)
-RUN apt-get update && apt-get install -y \
+# apt-get 에러(exit code 100) 방지를 위해 미러 및 패키지 간소화
+RUN apt-get clean && apt-get update -o Acquire::Retries=3 --fix-missing && apt-get install -y --no-install-recommends \
     libglib2.0-0 \
-    libsm6 \
-    libxext6 \
-    libxrender-dev \
     libgl1-mesa-glx \
     && rm -rf /var/lib/apt/lists/*
 
