@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  # 1. FastAPI 백엔드 앱
+  cctv-dashboard:
+    build: .
+    container_name: port_cctv_server
+    expose:
+      - "9000" # nginx-proxy를 통해 접근하므로 외부 포트 개방 없이 expose만 사용
+    environment:
+      - TZ=Asia/Seoul
+      # Nginx-proxy 설정
+      - VIRTUAL_HOST=cctv.minstudio.app
+      - VIRTUAL_PORT=9000
+      # Let's Encrypt 자동 갱신 설정
+      - LETSENCRYPT_HOST=cctv.minstudio.app
+      - LETSENCRYPT_EMAIL=admin@minstudio.app
+    restart: unless-stopped
+
+  # 2. 자동 리버스 프록시 (Nginx)
+  nginx-proxy:
+    image: nginxproxy/nginx-proxy:alpine
+    container_name: nginx-proxy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - conf:/etc/nginx/conf.d
+      - vhost:/etc/nginx/vhost.d
+      - html:/usr/share/nginx/html
+      - dhparam:/etc/nginx/dhparam
+      - certs:/etc/nginx/certs:ro
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+    restart: always
+
+  # 3. Let's Encrypt 인증서 자동 발급 및 갱신 (Certbot)
+  acme-companion:
+    image: nginxproxy/acme-companion
+    container_name: nginx-proxy-acme
+    environment:
+      - DEFAULT_EMAIL=admin@minstudio.app
+    volumes:
+      - conf:/etc/nginx/conf.d
+      - vhost:/etc/nginx/vhost.d
+      - html:/usr/share/nginx/html
+      - certs:/etc/nginx/certs:rw
+      - acme:/etc/acme.sh
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      - nginx-proxy
+    restart: always
+
+volumes:
+  conf:
+  vhost:
+  html:
+  dhparam:
+  certs:
+  acme:

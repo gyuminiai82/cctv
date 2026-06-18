@@ -1,0 +1,3 @@
+@echo off
+echo Starting CCTV Dashboard Server on Port 9000...
+uvicorn main:app --reload --port 9000
