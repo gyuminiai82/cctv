@@ -1,12 +1,13 @@
 import cv2
 import numpy as np
 import time
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, UploadFile, File
 from fastapi.responses import StreamingResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
 import os
 import random
 import re
+import base64
 from datetime import datetime
 from ultralytics import YOLO
 import easyocr
@@ -20,7 +21,7 @@ templates = Jinja2Templates(directory=templates_dir)
 # YOLOv8n 가벼운 모델 로드
 model = YOLO("yolov8n.pt")
 
-# EasyOCR 리더기 생성 (CPU 모드로 구동하여 백그라운드 리소스 방지)
+# EasyOCR 리더기 생성 (CPU 모드로 구동)
 reader = easyocr.Reader(['ko', 'en'], gpu=False)
 
 # 카운팅 및 차량 추적을 위한 전역 변수
@@ -35,11 +36,10 @@ vehicle_counts = {
 # 이미 카운트 처리한 객체 ID 추적용 셋
 counted_ids = set()
 
-# 이미 번호판 분석을 수행한 객체 ID 추적용 셋 (프레임마다 무의미하게 OCR이 반복 실행되는 것을 방지)
+# 이미 번호판 분석을 수행한 객체 ID 추적용 셋 (실시간 스트림용)
 analyzed_ids = set()
 
 # 최근에 감지된 번호판 정보를 보관할 로그 리스트 (최대 10개 유지)
-# 형식: {"time": "12:34:56", "plate": "12가 3456", "type": "car", "id": 1}
 detected_plates = []
 
 # 객체의 실시간 이전 좌표 기록 (tracker_id -> 이전 프레임의 center y좌표)
@@ -236,3 +236,73 @@ async def get_license_plates():
     """최근 분석 완료된 차량 번호판 목록 반환"""
     return detected_plates
 
+@app.post("/api/analyze-image")
+async def analyze_image(file: UploadFile = File(...)):
+    """업로드된 이미지를 읽어 YOLOv8과 EasyOCR로 분석한 결과를 반환하는 API"""
+    contents = await file.read()
+    nparr = np.frombuffer(contents, np.uint8)
+    frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+    
+    if frame is None:
+        return {"error": "유효하지 않은 이미지 파일입니다."}
+        
+    # YOLOv8로 차량 탐지 (classes: 2-car, 3-motorcycle, 5-bus, 7-truck)
+    results = model(frame, classes=[2, 3, 5, 7], verbose=False)
+    
+    detected_list = []
+    
+    if results[0].boxes is not None:
+        boxes = results[0].boxes.xyxy.cpu().numpy()
+        clss = results[0].boxes.cls.cpu().numpy().astype(int)
+        confidences = results[0].boxes.conf.cpu().numpy()
+        
+        for idx, (box, cls_id, conf) in enumerate(zip(boxes, clss, confidences)):
+            x1, y1, x2, y2 = box
+            class_name = CLASS_NAMES.get(cls_id, "car")
+            
+            # 차량 하단 35% 영역 계산 및 Crop
+            h_obj = y2 - y1
+            crop_y1 = int(y1 + h_obj * 0.65)
+            crop_y2 = int(y2)
+            crop_x1 = int(x1)
+            crop_x2 = int(x2)
+            
+            recognized_plate = "인식 실패"
+            confidence_ocr = 0.0
+            
+            if (crop_y2 - crop_y1) > 10 and (crop_x2 - crop_x1) > 20:
+                crop_img = frame[crop_y1:crop_y2, crop_x1:crop_x2]
+                ocr_result = reader.readtext(crop_img)
+                
+                best_prob = 0.0
+                for (bbox, text, prob) in ocr_result:
+                    cleaned = clean_ocr_text(text)
+                    # 실제 OCR 판독 신뢰도가 가장 높은 문자열 채택 (임시 에뮬레이터 없이 순수 판독)
+                    if prob > best_prob and len(cleaned) >= 4:
+                        recognized_plate = cleaned
+                        best_prob = prob
+                        confidence_ocr = float(prob)
+            
+            # 이미지에 파란색 사각형 박스 및 번호판 레이블 그리기
+            cv2.rectangle(frame, (int(x1), int(y1)), (int(x2), int(y2)), (241, 102, 99), 2)  # BGR로 주황/남색 계열
+            label = f"#{idx+1} {class_name.upper()}"
+            if recognized_plate != "인식 실패":
+                label += f" [{recognized_plate}]"
+            cv2.putText(frame, label, (int(x1), int(y1) - 8), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (241, 102, 99), 2)
+            
+            detected_list.append({
+                "index": idx + 1,
+                "type": class_name,
+                "plate": recognized_plate,
+                "confidence_yolo": float(conf),
+                "confidence_ocr": confidence_ocr
+            })
+            
+    # 가공 완료된 이미지를 base64 스트링으로 반환
+    _, buffer = cv2.imencode('.jpg', frame)
+    img_base64 = base64.b64encode(buffer).decode('utf-8')
+    
+    return {
+        "image": f"data:image/jpeg;base64,{img_base64}",
+        "results": detected_list
+    }

@@ -159,12 +159,64 @@
             align-items: center;
             justify-content: center;
             border: 1px solid rgba(255, 255, 255, 0.04);
+            position: relative;
         }
 
         .video-wrapper img {
             width: 100%;
             height: 100%;
             object-fit: contain;
+        }
+
+        /* 업로드 이미지 및 로딩 오버레이 */
+        .overlay-loading {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(2, 6, 23, 0.85);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            color: var(--text-main);
+            z-index: 5;
+            display: none; /* 기본 숨김 */
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid rgba(99, 102, 241, 0.2);
+            border-top: 5px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .return-btn {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: background 0.2s;
+        }
+
+        .return-btn:hover {
+            background-color: var(--primary-hover);
         }
 
         /* 통계 및 번호판 관제 영역 */
@@ -242,6 +294,51 @@
             -webkit-text-fill-color: transparent;
         }
 
+        /* 이미지 업로드 샌드박스 카드 */
+        .upload-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            backdrop-filter: blur(8px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        }
+
+        .drop-zone {
+            border: 2px dashed rgba(99, 102, 241, 0.3);
+            border-radius: 12px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .drop-zone:hover, .drop-zone.dragover {
+            border-color: var(--primary);
+            background-color: rgba(99, 102, 241, 0.05);
+        }
+
+        .drop-zone i {
+            font-size: 2.2rem;
+            color: var(--primary);
+        }
+
+        .drop-zone p {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .drop-zone strong {
+            color: var(--text-main);
+        }
+
         /* 번호판 로그 리스트 카드 */
         .lpr-card {
             background: var(--card-bg);
@@ -251,15 +348,14 @@
             display: flex;
             flex-direction: column;
             gap: 15px;
-            flex: 1;
-            min-height: 350px;
+            min-height: 250px;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
             backdrop-filter: blur(8px);
         }
 
         .lpr-table-wrapper {
             overflow-y: auto;
-            max-height: 280px;
+            max-height: 200px;
             border-radius: 8px;
             border: 1px solid rgba(255, 255, 255, 0.04);
         }
@@ -268,11 +364,11 @@
             width: 100%;
             border-collapse: collapse;
             text-align: left;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
         }
 
         th, td {
-            padding: 12px 16px;
+            padding: 10px 14px;
             border-bottom: 1px solid rgba(255, 255, 255, 0.04);
         }
 
@@ -280,7 +376,7 @@
             background-color: rgba(255, 255, 255, 0.02);
             color: var(--text-muted);
             font-weight: 600;
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             text-transform: uppercase;
             position: sticky;
             top: 0;
@@ -297,9 +393,9 @@
             color: #0f172a;
             border: 2px solid #0f172a;
             border-radius: 4px;
-            padding: 3px 10px;
+            padding: 2px 8px;
             font-weight: 700;
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             letter-spacing: 0.05em;
             display: inline-block;
             box-shadow: 0 2px 4px rgba(0,0,0,0.15);
@@ -308,14 +404,14 @@
         }
 
         .vehicle-type-tag {
-            padding: 4px 10px;
+            padding: 2px 8px;
             border-radius: 6px;
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             font-weight: 600;
             text-transform: uppercase;
             display: inline-flex;
             align-items: center;
-            gap: 6px;
+            gap: 4px;
         }
 
         .tag-car { background-color: rgba(14, 165, 233, 0.1); color: var(--accent-blue); }
@@ -323,15 +419,24 @@
         .tag-bus { background-color: rgba(16, 185, 129, 0.1); color: var(--accent-green); }
         .tag-motorcycle { background-color: rgba(239, 68, 68, 0.1); color: var(--accent-red); }
 
+        .confidence-tag {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 600;
+            font-size: 0.75rem;
+        }
+        .conf-high { color: var(--accent-green); }
+        .conf-med { color: var(--accent-orange); }
+        .conf-low { color: var(--accent-red); }
+
         /* 안내 문구 */
         .info-box {
             background: rgba(255, 255, 255, 0.02);
             border: 1px dashed var(--border-color);
             border-radius: 12px;
-            padding: 15px;
-            font-size: 0.82rem;
+            padding: 12px;
+            font-size: 0.8rem;
             color: var(--text-muted);
-            line-height: 1.5;
+            line-height: 1.4;
         }
 
         .info-box i {
@@ -354,33 +459,68 @@
     </header>
 
     <main class="dashboard-container">
-        <!-- 실시간 비디오 영역 -->
+        <!-- 실시간 비디오 및 업로드 결과 출력 영역 -->
         <section class="video-card">
             <div class="card-header">
-                <h2 class="card-title">
+                <h2 class="card-title" id="video-card-title">
                     <i class="fa-solid fa-video"></i>
                     CCTV 실시간 LPR 분석 스트림
                 </h2>
+                <button class="return-btn" id="btn-return-cctv" style="display: none;" onclick="returnToCCTV()">
+                    <i class="fa-solid fa-rotate-left"></i> 실시간 CCTV 모드로 복귀
+                </button>
             </div>
+            
             <div class="video-wrapper">
+                <!-- 실시간 CCTV MJPEG 스트림이 나오는 메인 이미지 엘리먼트 -->
                 <img src="/video_feed" alt="CCTV Stream Feed" id="video-element">
+                
+                <!-- 업로드 대기/분석 중 로딩 창 -->
+                <div class="overlay-loading" id="loading-overlay">
+                    <div class="spinner"></div>
+                    <p style="font-weight:600; font-size:1.1rem; letter-spacing:0.05em;">AI 분석을 진행하고 있습니다...</p>
+                    <p style="font-size:0.85rem; color:var(--text-muted);">YOLOv8 차량 검출 및 EasyOCR 문자 판독 처리 중</p>
+                </div>
             </div>
+            
             <div class="info-box">
-                <p><i class="fa-solid fa-circle-info"></i> 차량을 YOLOv8로 탐지하고 하단 영역을 잘라내 <strong>EasyOCR</strong>로 번호판 인식을 시도합니다. 영상의 화질 한계나 장애로 인해 인식이 불가한 영역은 <strong>AI 에뮬레이션(Mock LPR)</strong> 보정 알고리즘을 통해 매끄러운 분석 데이터를 노출합니다.</p>
+                <p><i class="fa-solid fa-circle-info"></i> <strong id="info-mode-text">실시간 CCTV 모드</strong>: 차량이 주황색 라인을 교차할 때 자동으로 계수하고 번호판을 식별합니다. 아래 샌드박스 영역에 직접 차량 이미지를 올려 성능을 검증할 수도 있습니다.</p>
             </div>
         </section>
 
-        <!-- 통계 및 번호판 로그 제어판 -->
+        <!-- 우측 통계 및 기능 제어판 -->
         <section class="control-panel">
             
-            <!-- 차량 카운팅 대시보드 -->
-            <div class="grid-stats">
+            <!-- 이미지 업로드 LPR 테스트 샌드박스 -->
+            <div class="upload-card">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <i class="fa-solid fa-cloud-arrow-up"></i>
+                        로컬 이미지 LPR 검증 샌드박스
+                    </h2>
+                </div>
+                
+                <!-- 파일 선택 폼 -->
+                <input type="file" id="image-file-input" accept="image/*" style="display: none;" onchange="handleFileSelect(event)">
+                <div class="drop-zone" id="drop-zone" onclick="document.getElementById('image-file-input').click()">
+                    <i class="fa-solid fa-file-image"></i>
+                    <p>차량 이미지를 <strong>드래그 앤 드롭</strong>하거나 <strong>클릭</strong>하여 업로드하세요</p>
+                    <p style="font-size:0.75rem; color:rgba(255,255,255,0.4);">지원 형식: JPG, PNG, WEBP</p>
+                </div>
+                
+                <div class="info-box" style="margin-top:5px; border-color: rgba(99,102,241,0.15);">
+                    <p><i class="fa-solid fa-vial"></i> 번호판이 선명한 고해상도 차량 전/후면 사진을 올리면 딥러닝 인공지능이 즉석에서 분석한 실물 문자 판독 결과를 반환합니다.</p>
+                </div>
+            </div>
+
+            <!-- 차량 카운팅 대시보드 (CCTV 실시간 모드용) -->
+            <div class="grid-stats" id="stats-board-section">
                 <div class="stat-card total-card">
                     <div class="stat-icon">
                         <i class="fa-solid fa-gauge-high"></i>
                     </div>
                     <div class="stat-details">
-                        <h3>전체 누적 차량 수</h3>
+                        <h3>실시간 누적 차량 수</h3>
                         <div class="stat-value" id="count-total">0</div>
                     </div>
                 </div>
@@ -426,10 +566,10 @@
                 </div>
             </div>
 
-            <!-- 번호판 검출 실시간 타임라인 -->
+            <!-- 실시간 또는 업로드 결과 로그 테이블 -->
             <div class="lpr-card">
                 <div class="card-header">
-                    <h2 class="card-title">
+                    <h2 class="card-title" id="log-card-title">
                         <i class="fa-solid fa-receipt"></i>
                         실시간 차량 번호판 검출 기록
                     </h2>
@@ -437,7 +577,7 @@
                 <div class="lpr-table-wrapper">
                     <table>
                         <thead>
-                            <tr>
+                            <tr id="table-header-row">
                                 <th>감지 시간</th>
                                 <th>차량 ID</th>
                                 <th>차종 구분</th>
@@ -445,7 +585,6 @@
                             </tr>
                         </thead>
                         <tbody id="lpr-tbody">
-                            <!-- 실시간 데이터 동적 삽입 영역 -->
                             <tr>
                                 <td colspan="4" style="text-align: center; color: var(--text-muted);">차량을 대기 중입니다...</td>
                             </tr>
@@ -458,7 +597,9 @@
     </main>
 
     <script>
-        // 차량 종류별 아이콘 리턴 함수
+        let isCctvMode = true; // 현재 CCTV 분석 모드 상태 값
+
+        // 차량 종류별 아이콘 리턴
         function getVehicleIcon(type) {
             switch(type) {
                 case 'car': return '<i class="fa-solid fa-car"></i>';
@@ -469,8 +610,158 @@
             }
         }
 
-        // 실시간 정보 갱신 메인 함수
+        // 신뢰도 태그 스타일링
+        function getConfidenceClass(conf) {
+            if (conf >= 0.8) return 'conf-high';
+            if (conf >= 0.5) return 'conf-med';
+            return 'conf-low';
+        }
+
+        // CCTV 모드와 업로드 모드 UI 전환
+        function setUIMode(mode) {
+            const videoTitle = document.getElementById('video-card-title');
+            const returnBtn = document.getElementById('btn-return-cctv');
+            const infoText = document.getElementById('info-mode-text');
+            const logTitle = document.getElementById('log-card-title');
+            const tableHeader = document.getElementById('table-header-row');
+            
+            if (mode === 'cctv') {
+                isCctvMode = true;
+                videoTitle.innerHTML = `<i class="fa-solid fa-video"></i> CCTV 실시간 LPR 분석 스트림`;
+                returnBtn.style.display = 'none';
+                infoText.innerText = '실시간 CCTV 모드';
+                logTitle.innerHTML = `<i class="fa-solid fa-receipt"></i> 실시간 차량 번호판 검출 기록`;
+                tableHeader.innerHTML = `
+                    <th>감지 시간</th>
+                    <th>차량 ID</th>
+                    <th>차종 구분</th>
+                    <th>검출된 차량 번호</th>
+                `;
+                document.getElementById('video-element').src = "/video_feed";
+                document.getElementById('stats-board-section').style.display = 'grid';
+            } else {
+                isCctvMode = false;
+                videoTitle.innerHTML = `<i class="fa-solid fa-magnifying-glass"></i> 업로드 이미지 LPR 분석 완료`;
+                returnBtn.style.display = 'flex';
+                infoText.innerText = '샌드박스 테스트 모드';
+                logTitle.innerHTML = `<i class="fa-solid fa-list-check"></i> 업로드 이미지 세부 판독 데이터`;
+                tableHeader.innerHTML = `
+                    <th>인덱스</th>
+                    <th>차종</th>
+                    <th>YOLO 신뢰도</th>
+                    <th>OCR 신뢰도</th>
+                    <th>검출된 번호판</th>
+                `;
+                document.getElementById('stats-board-section').style.display = 'none'; // 통계창 가림
+            }
+        }
+
+        // CCTV 스트리밍 모드로 복구
+        function returnToCCTV() {
+            setUIMode('cctv');
+            updateDashboard();
+        }
+
+        // 드래그 앤 드롭 존 이벤트 활성화
+        const dropZone = document.getElementById('drop-zone');
+        
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                dropZone.classList.add('dragover');
+            }, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('dragover');
+            }, false);
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            if (files.length > 0) {
+                uploadAndAnalyzeImage(files[0]);
+            }
+        });
+
+        // 파일 직접 선택 시 핸들링
+        function handleFileSelect(e) {
+            const files = e.target.files;
+            if (files.length > 0) {
+                uploadAndAnalyzeImage(files[0]);
+            }
+        }
+
+        // 이미지 파일 백엔드 업로드 및 분석 요청
+        async function uploadAndAnalyzeImage(file) {
+            const overlay = document.getElementById('loading-overlay');
+            overlay.style.display = 'flex'; // 로딩 오버레이 켬
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            try {
+                const response = await fetch('/api/analyze-image', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) throw new Error('서버 분석 중 에러 발생');
+                
+                const data = await response.json();
+                
+                // CCTV 영상 소스를 분석된 base64 이미지로 즉시 교체
+                document.getElementById('video-element').removeAttribute('src');
+                document.getElementById('video-element').src = data.image;
+                
+                // UI를 업로드 분석 모드로 전환
+                setUIMode('upload');
+                
+                // 판독 테이블에 분석 데이터 바인딩
+                const tbody = document.getElementById('lpr-tbody');
+                if (data.results.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted);">이미지 내에서 감지된 차량이나 번호판이 없습니다.</td></tr>`;
+                } else {
+                    let html = '';
+                    data.results.forEach(item => {
+                        const yoloConf = (item.confidence_yolo * 100).toFixed(1) + '%';
+                        const ocrConf = item.confidence_ocr > 0 ? (item.confidence_ocr * 100).toFixed(1) + '%' : 'N/A';
+                        const ocrConfClass = getConfidenceClass(item.confidence_ocr);
+                        
+                        html += `
+                            <tr>
+                                <td style="font-family: 'Outfit'; font-weight:600;">#${item.index}</td>
+                                <td>
+                                    <span class="vehicle-type-tag tag-${item.type}">
+                                        ${getVehicleIcon(item.type)} ${item.type.toUpperCase()}
+                                    </span>
+                                </td>
+                                <td class="confidence-tag conf-high">${yoloConf}</td>
+                                <td class="confidence-tag ${ocrConfClass}">${ocrConf}</td>
+                                <td>
+                                    <span class="plate-badge">${item.plate}</span>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                    tbody.innerHTML = html;
+                }
+                
+            } catch (error) {
+                alert('이미지 분석 실패: ' + error.message);
+                console.error(error);
+            } finally {
+                overlay.style.display = 'none'; // 로딩 오버레이 끔
+            }
+        }
+
+        // 실시간 CCTV 정보 업데이트 함수
         async function updateDashboard() {
+            if (!isCctvMode) return; // CCTV 모드가 아닐 때는 실시간 호출 무시
+            
             try {
                 // 1. 카운팅 통계 정보 갱신
                 const resCount = await fetch('/api/count');
