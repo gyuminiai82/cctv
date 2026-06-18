@@ -3,53 +3,394 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>불법주차 관제 대시보드 (PoC)</title>
+    <title>AI 기반 차량 관제 대시보드 (PoC)</title>
+    <!-- Google Fonts 및 FontAwesome 추가 -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
     <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f4f7f6;
+        :root {
+            --bg-color: #0b0f19;
+            --card-bg: rgba(22, 28, 45, 0.6);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --accent-green: #10b981;
+            --accent-orange: #f59e0b;
+            --accent-blue: #0ea5e9;
+            --accent-red: #ef4444;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+
+        * {
+            box-sizing: border-box;
             margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', 'Outfit', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+        }
+
+        /* 헤더 스타일 */
+        header {
+            background-color: rgba(11, 15, 25, 0.8);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border-color);
+            padding: 18px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .logo-area {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-area i {
+            font-size: 1.6rem;
+            color: var(--primary);
+            filter: drop-shadow(0 0 8px rgba(99, 102, 241, 0.6));
+        }
+
+        .logo-area h1 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.4rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #fff 30%, var(--primary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background-color: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            color: var(--accent-green);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background-color: var(--accent-green);
+            border-radius: 50%;
+            animation: pulse 1.8s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(0.9); opacity: 0.6; }
+            50% { transform: scale(1.2); opacity: 1; box-shadow: 0 0 8px var(--accent-green); }
+            100% { transform: scale(0.9); opacity: 0.6; }
+        }
+
+        /* 메인 대시보드 레이아웃 */
+        .dashboard-container {
+            flex: 1;
+            max-width: 1400px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 30px;
+            display: grid;
+            grid-template-columns: 1.7fr 1fr;
+            gap: 25px;
+        }
+
+        @media (max-width: 1024px) {
+            .dashboard-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* 비디오 피드 카드 */
+        .video-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
             padding: 20px;
             display: flex;
             flex-direction: column;
+            gap: 15px;
+            backdrop-filter: blur(8px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
             align-items: center;
         }
-        h1 {
-            color: #333;
+
+        .card-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
-        .video-container {
-            background-color: #000;
-            padding: 10px;
-            border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-            margin-top: 20px;
+
+        .card-title i {
+            color: var(--primary);
         }
-        img {
-            max-width: 100%;
-            height: auto;
-            display: block;
-            border-radius: 4px;
-        }
-        .status-badge {
-            display: inline-block;
-            background-color: #28a745;
-            color: white;
-            padding: 5px 10px;
+
+        .video-wrapper {
+            background-color: #020617;
             border-radius: 12px;
-            font-size: 0.9em;
-            margin-bottom: 20px;
+            overflow: hidden;
+            aspect-ratio: 16/9;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        .video-wrapper img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        /* 통계 영역 */
+        .stats-area {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .grid-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        /* 통계 카드 공통 */
+        .stat-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(99, 102, 241, 0.2);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+
+        .stat-card.total-card {
+            grid-column: span 2;
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(22, 28, 45, 0.6) 100%);
+            border: 1px solid rgba(99, 102, 241, 0.25);
+        }
+
+        .stat-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+        }
+
+        .total-card .stat-icon { background: rgba(99, 102, 241, 0.2); color: var(--primary); }
+        .car-card .stat-icon { background: rgba(14, 165, 233, 0.2); color: var(--accent-blue); }
+        .truck-card .stat-icon { background: rgba(245, 158, 11, 0.2); color: var(--accent-orange); }
+        .bus-card .stat-icon { background: rgba(16, 185, 129, 0.2); color: var(--accent-green); }
+        .moto-card .stat-icon { background: rgba(239, 68, 68, 0.2); color: var(--accent-red); }
+
+        .stat-details h3 {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 4px;
+        }
+
+        .stat-value {
+            font-family: 'Outfit', sans-serif;
+            font-size: 2.2rem;
+            font-weight: 800;
+        }
+
+        .total-card .stat-value {
+            font-size: 2.8rem;
+            background: linear-gradient(135deg, #fff, var(--primary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* 데코 링 효과 */
+        .stat-card::after {
+            content: '';
+            position: absolute;
+            width: 120px;
+            height: 120px;
+            border: 10px solid rgba(255, 255, 255, 0.015);
+            border-radius: 50%;
+            bottom: -30px;
+            right: -30px;
+        }
+
+        /* 안내 문구 */
+        .info-box {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px dashed var(--border-color);
+            border-radius: 12px;
+            padding: 15px;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+
+        .info-box i {
+            color: var(--primary);
+            margin-right: 6px;
         }
     </style>
 </head>
 <body>
 
-    <h1>차량 불법주차 관제 시스템 (PoC)</h1>
-    <div class="status-badge">카메라 스트리밍 중 🟢</div>
+    <header>
+        <div class="logo-area">
+            <i class="fa-solid fa-server"></i>
+            <h1>SMART TRAFFIC DASHBOARD</h1>
+        </div>
+        <div class="status-badge" id="cctv-status">
+            <div class="status-dot"></div>
+            <span id="status-text">카메라 연결 성공</span>
+        </div>
+    </header>
 
-    <div class="video-container">
-        <!-- 서버의 /video_feed 엔드포인트를 이미지 소스로 사용하여 실시간 영상 표시 -->
-        <img src="/video_feed" alt="실시간 카메라 영상 스트림">
-    </div>
+    <main class="dashboard-container">
+        <!-- 실시간 비디오 영역 -->
+        <section class="video-card">
+            <div class="card-header">
+                <h2 class="card-title">
+                    <i class="fa-solid fa-video"></i>
+                    CCTV 실시간 분석 스트림
+                </h2>
+            </div>
+            <div class="video-wrapper">
+                <!-- FastAPI의 /video_feed 엔드포인트를 지정하여 실시간 연동 -->
+                <img src="/video_feed" alt="CCTV Stream Feed" id="video-element">
+            </div>
+            <div class="info-box">
+                <p><i class="fa-solid fa-circle-info"></i> 영상 내 <strong>COUNTING LINE</strong>(주황색 가로선)을 지나는 차량들을 YOLOv8 추적 기술을 사용하여 차량 종류별로 자동 집계합니다.</p>
+            </div>
+        </section>
 
+        <!-- 통계 요약 영역 -->
+        <section class="stats-area">
+            <div class="grid-stats">
+                <!-- 전체 차량 누적 -->
+                <div class="stat-card total-card">
+                    <div class="stat-icon">
+                        <i class="fa-solid fa-gauge-high"></i>
+                    </div>
+                    <div class="stat-details">
+                        <h3>전체 누적 통과 차량</h3>
+                        <div class="stat-value" id="count-total">0</div>
+                    </div>
+                </div>
+
+                <!-- 승용차 -->
+                <div class="stat-card car-card">
+                    <div class="stat-icon">
+                        <i class="fa-solid fa-car"></i>
+                    </div>
+                    <div class="stat-details">
+                        <h3>승용차 (Car)</h3>
+                        <div class="stat-value" id="count-car">0</div>
+                    </div>
+                </div>
+
+                <!-- 트럭 -->
+                <div class="stat-card truck-card">
+                    <div class="stat-icon">
+                        <i class="fa-solid fa-truck"></i>
+                    </div>
+                    <div class="stat-details">
+                        <h3>트럭 (Truck)</h3>
+                        <div class="stat-value" id="count-truck">0</div>
+                    </div>
+                </div>
+
+                <!-- 버스 -->
+                <div class="stat-card bus-card">
+                    <div class="stat-icon">
+                        <i class="fa-solid fa-bus"></i>
+                    </div>
+                    <div class="stat-details">
+                        <h3>버스 (Bus)</h3>
+                        <div class="stat-value" id="count-bus">0</div>
+                    </div>
+                </div>
+
+                <!-- 오토바이 -->
+                <div class="stat-card moto-card">
+                    <div class="stat-icon">
+                        <i class="fa-solid fa-motorcycle"></i>
+                    </div>
+                    <div class="stat-details">
+                        <h3>이륜차 (Moto)</h3>
+                        <div class="stat-value" id="count-motorcycle">0</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        // 백엔드로부터 실시간 카운트 값을 가져와 화면을 갱신하는 스크립트
+        async function updateCounts() {
+            try {
+                const response = await fetch('/api/count');
+                if (!response.ok) throw new Error('API 응답에 문제가 있습니다.');
+                
+                const data = await response.json();
+                
+                // 각 요소를 가져와 값 갱신 (애니메이션 효과를 가미해 자연스럽게 갱신 가능)
+                document.getElementById('count-total').innerText = data.total || 0;
+                document.getElementById('count-car').innerText = data.car || 0;
+                document.getElementById('count-truck').innerText = data.truck || 0;
+                document.getElementById('count-bus').innerText = data.bus || 0;
+                document.getElementById('count-motorcycle').innerText = data.motorcycle || 0;
+                
+            } catch (error) {
+                console.error("데이터 갱신 오류:", error);
+            }
+        }
+
+        // 1초(1000ms)마다 백엔드 카운트 정보 갱신
+        setInterval(updateCounts, 1000);
+        
+        // 페이지 로드 시 즉시 초기화
+        updateCounts();
+    </script>
 </body>
 </html>
+
