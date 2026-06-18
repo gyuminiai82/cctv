@@ -19,16 +19,15 @@ jobs:
         host: ${{ secrets.EC2_HOST }}
         username: ${{ secrets.EC2_USERNAME }}
         key: ${{ secrets.EC2_SSH_KEY }}
+        script_stop: true
         script: |
-          # EC2 인스턴스 내 프로젝트 폴더로 이동 (폴더가 없으면 에러 발생하므로 사전 구성 필요)
-          cd /home/ubuntu/port_cctv || mkdir -p /home/ubuntu/port_cctv && cd /home/ubuntu/port_cctv
-          
-          # Git Pull (EC2에 이미 git clone이 되어 있다고 가정)
-          # 만약 git clone 방식이 아니라면 scp-action으로 파일을 복사하는 방식을 추가해야 합니다.
+          cd /home/ubuntu
+          if [ ! -d "port_cctv/.git" ]; then
+            echo "Git repository not found. Cloning..."
+            rm -rf port_cctv
+            git clone https://github.com/gyuminiai82/cctv.git port_cctv
+          fi
+          cd port_cctv
           git pull origin main
-          
-          # 최신 코드로 Docker 빌드 및 무중단 백그라운드 실행
           docker compose up -d --build
-          
-          # (선택) 사용하지 않는 오래된 도커 이미지 정리 (디스크 공간 확보용)
           docker image prune -f
