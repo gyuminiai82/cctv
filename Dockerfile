@@ -4,7 +4,7 @@ FROM python:3.10-slim
 # apt-get 에러(exit code 100) 방지를 위해 미러 및 패키지 간소화
 RUN apt-get clean && apt-get update -o Acquire::Retries=3 --fix-missing && apt-get install -y --no-install-recommends \
     libglib2.0-0 \
-    libgl1-mesa-glx \
+    libgl1 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
