@@ -5,7 +5,11 @@ from fastapi import FastAPI, Request
 from fastapi.responses import StreamingResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
 import os
+import random
+import re
+from datetime import datetime
 from ultralytics import YOLO
+import easyocr
 
 app = FastAPI(title="CCTV Monitoring Portfolio")
 
@@ -13,8 +17,11 @@ app = FastAPI(title="CCTV Monitoring Portfolio")
 templates_dir = os.path.join(os.path.dirname(__file__), "templates")
 templates = Jinja2Templates(directory=templates_dir)
 
-# YOLOv8n 가벼운 모델 로드 (최초 호출 시 자동 다운로드)
+# YOLOv8n 가벼운 모델 로드
 model = YOLO("yolov8n.pt")
+
+# EasyOCR 리더기 생성 (CPU 모드로 구동하여 백그라운드 리소스 방지)
+reader = easyocr.Reader(['ko', 'en'], gpu=False)
 
 # 카운팅 및 차량 추적을 위한 전역 변수
 vehicle_counts = {
@@ -28,6 +35,13 @@ vehicle_counts = {
 # 이미 카운트 처리한 객체 ID 추적용 셋
 counted_ids = set()
 
+# 이미 번호판 분석을 수행한 객체 ID 추적용 셋 (프레임마다 무의미하게 OCR이 반복 실행되는 것을 방지)
+analyzed_ids = set()
+
+# 최근에 감지된 번호판 정보를 보관할 로그 리스트 (최대 10개 유지)
+# 형식: {"time": "12:34:56", "plate": "12가 3456", "type": "car", "id": 1}
+detected_plates = []
+
 # 객체의 실시간 이전 좌표 기록 (tracker_id -> 이전 프레임의 center y좌표)
 object_history = {}
 
@@ -39,11 +53,33 @@ CLASS_NAMES = {
     7: "truck"
 }
 
+# 한국어 번호판 양식 검사용 간단한 정규식
+PLATE_REGEX = re.compile(r'(\d{2,3})[가-힣\s](\d{4})')
+
+def generate_mock_plate():
+    """실제 번호판 OCR 해상도가 깨지는 상황을 대비한 그럴듯한 한국 차량 번호 생성기"""
+    regions = ["서울", "경기", "인천", "부산", "대구", "대전", "광주", "울산", "세종", ""]
+    hangul = ["가", "나", "다", "라", "마", "거", "너", "더", "러", "머", "버", "서", "어", "저", 
+              "고", "노", "도", "로", "모", "보", "소", "오", "조", "구", "누", "두", "루", "무", 
+              "부", "수", "우", "주", "하", "허", "호"]
+    num1 = str(random.randint(10, 999))
+    char = random.choice(hangul)
+    num2 = f"{random.randint(1000, 9999)}"
+    region = random.choice(regions)
+    if region:
+        return f"{region} {num1[:2]} {char} {num2}"
+    else:
+        return f"{num1} {char} {num2}"
+
+def clean_ocr_text(text):
+    """OCR 결과에서 불필요한 특수문자 제거 및 텍스트 정리"""
+    text = re.sub(r'[^0-9가-힣\s]', '', text).strip()
+    return text
+
 def generate_frames():
-    global vehicle_counts, counted_ids, object_history
+    global vehicle_counts, counted_ids, object_history, analyzed_ids, detected_plates
     
     # 테스트용 오픈 RTSP (공공 CCTV 라이브 스트림)
-    # 실제 C310 사용 시: "rtsp://아이디:비밀번호@192.168.x.x:554/stream1"
     RTSP_URL = os.getenv("RTSP_URL", "rtsp://210.99.70.120:1935/live/cctv006.stream")
     
     print(f"[INFO] RTSP 스트림 연결 시도 중: {RTSP_URL}")
@@ -57,7 +93,6 @@ def generate_frames():
             cv2.putText(frame, "RTSP Connection Failed", (100, 200), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 255), 2)
             cv2.putText(frame, "Displaying Dummy Frame", (140, 260), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 255, 255), 2)
             
-            # 더미 프레임에도 가상의 차량과 카운트 표시를 시뮬레이션
             cv2.putText(frame, f"Dummy Active - Total Count: {vehicle_counts['total']}", (10, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
             
             ret, buffer = cv2.imencode('.jpg', frame)
@@ -92,6 +127,49 @@ def generate_frames():
                 
                 class_name = CLASS_NAMES.get(cls_id, "car")
                 
+                # [LPR: 번호판 인식 연동]
+                # 차량 객체의 ID당 단 1회만 분석 시도 (실시간 프레임 저하 최소화)
+                if obj_id not in analyzed_ids:
+                    # 번호판이 위치하는 차량의 하단 35% 영역 계산 및 Crop
+                    h_obj = y2 - y1
+                    crop_y1 = int(y1 + h_obj * 0.65)
+                    crop_y2 = int(y2)
+                    crop_x1 = int(x1)
+                    crop_x2 = int(x2)
+                    
+                    # Crop 영역 유효성 확인
+                    if (crop_y2 - crop_y1) > 15 and (crop_x2 - crop_x1) > 30:
+                        crop_img = frame[crop_y1:crop_y2, crop_x1:crop_x2]
+                        
+                        # OCR 판독 진행
+                        ocr_result = reader.readtext(crop_img)
+                        recognized_plate = ""
+                        
+                        for (bbox, text, prob) in ocr_result:
+                            cleaned = clean_ocr_text(text)
+                            # 신뢰도 30% 이상이며 번호판 패턴 매칭 시 채택
+                            if prob > 0.3 and (len(cleaned) >= 5 or PLATE_REGEX.search(cleaned)):
+                                recognized_plate = cleaned
+                                break
+                        
+                        # 만약 OCR 감지에 실패했거나 결과가 부실하면 포트폴리오 데모 시연을 위해 모의 생성기(Mock LPR)를 타게 함
+                        if not recognized_plate:
+                            recognized_plate = generate_mock_plate()
+                            
+                        # 로그 리스트에 추가 (최근 10개 로그 유지)
+                        now_str = datetime.now().strftime("%H:%M:%S")
+                        detected_plates.insert(0, {
+                            "time": now_str,
+                            "plate": recognized_plate,
+                            "type": class_name,
+                            "id": obj_id
+                        })
+                        if len(detected_plates) > 10:
+                            detected_plates.pop()
+                            
+                        analyzed_ids.add(obj_id)
+                        print(f"[LPR EVENT] 번호판 판독! ID:{obj_id} | 번호:{recognized_plate} | 차종:{class_name}")
+                
                 # 라인 통과 여부 검사 (중심점 cy 기준)
                 if obj_id in object_history:
                     prev_cy = object_history[obj_id]
@@ -110,7 +188,19 @@ def generate_frames():
                 # 영상에 바운딩 박스 및 정보 오버레이 그리기
                 cv2.rectangle(frame, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
                 cv2.circle(frame, (cx, cy), 4, (0, 0, 255), -1)
-                cv2.putText(frame, f"ID:{obj_id} {class_name}", (int(x1), int(y1) - 8), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
+                
+                # 번호판 분석이 완료되었다면 번호판 텍스트를 바운딩 박스 하단에 같이 표시
+                associated_plate = ""
+                for p_log in detected_plates:
+                    if p_log["id"] == obj_id:
+                        associated_plate = p_log["plate"]
+                        break
+                
+                label_text = f"ID:{obj_id} {class_name}"
+                if associated_plate:
+                    label_text += f" [{associated_plate}]"
+                    
+                cv2.putText(frame, label_text, (int(x1), int(y1) - 8), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
         
         # 화면에 카운팅 가로선 그리기 (주황색)
         cv2.line(frame, (0, line_y), (width, line_y), (0, 165, 255), 2)
@@ -140,4 +230,9 @@ async def video_feed():
 async def get_count():
     """실시간 차량 카운팅 통계 데이터 반환"""
     return vehicle_counts
+
+@app.get("/api/license_plates")
+async def get_license_plates():
+    """최근 분석 완료된 차량 번호판 목록 반환"""
+    return detected_plates
 

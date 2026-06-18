@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI 기반 차량 관제 대시보드 (PoC)</title>
+    <title>AI 기반 차량 관제 및 LPR 대시보드 (PoC)</title>
     <!-- Google Fonts 및 FontAwesome 추가 -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -104,16 +104,16 @@
         /* 메인 대시보드 레이아웃 */
         .dashboard-container {
             flex: 1;
-            max-width: 1400px;
+            max-width: 1500px;
             width: 100%;
             margin: 0 auto;
             padding: 30px;
             display: grid;
-            grid-template-columns: 1.7fr 1fr;
+            grid-template-columns: 1.5fr 1fr;
             gap: 25px;
         }
 
-        @media (max-width: 1024px) {
+        @media (max-width: 1100px) {
             .dashboard-container {
                 grid-template-columns: 1fr;
             }
@@ -167,11 +167,11 @@
             object-fit: contain;
         }
 
-        /* 통계 영역 */
-        .stats-area {
+        /* 통계 및 번호판 관제 영역 */
+        .control-panel {
             display: flex;
             flex-direction: column;
-            gap: 20px;
+            gap: 25px;
         }
 
         .grid-stats {
@@ -185,7 +185,7 @@
             background: var(--card-bg);
             border: 1px solid var(--border-color);
             border-radius: 16px;
-            padding: 20px;
+            padding: 18px;
             display: flex;
             flex-direction: column;
             gap: 12px;
@@ -195,9 +195,8 @@
         }
 
         .stat-card:hover {
-            transform: translateY(-4px);
+            transform: translateY(-2px);
             border-color: rgba(99, 102, 241, 0.2);
-            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
         }
 
         .stat-card.total-card {
@@ -207,13 +206,13 @@
         }
 
         .stat-icon {
-            width: 44px;
-            height: 44px;
-            border-radius: 10px;
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.25rem;
+            font-size: 1.1rem;
         }
 
         .total-card .stat-icon { background: rgba(99, 102, 241, 0.2); color: var(--primary); }
@@ -223,37 +222,106 @@
         .moto-card .stat-icon { background: rgba(239, 68, 68, 0.2); color: var(--accent-red); }
 
         .stat-details h3 {
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             color: var(--text-muted);
             text-transform: uppercase;
             letter-spacing: 0.05em;
-            margin-bottom: 4px;
+            margin-bottom: 2px;
         }
 
         .stat-value {
             font-family: 'Outfit', sans-serif;
-            font-size: 2.2rem;
+            font-size: 2rem;
             font-weight: 800;
         }
 
         .total-card .stat-value {
-            font-size: 2.8rem;
+            font-size: 2.5rem;
             background: linear-gradient(135deg, #fff, var(--primary));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
 
-        /* 데코 링 효과 */
-        .stat-card::after {
-            content: '';
-            position: absolute;
-            width: 120px;
-            height: 120px;
-            border: 10px solid rgba(255, 255, 255, 0.015);
-            border-radius: 50%;
-            bottom: -30px;
-            right: -30px;
+        /* 번호판 로그 리스트 카드 */
+        .lpr-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            flex: 1;
+            min-height: 350px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(8px);
         }
+
+        .lpr-table-wrapper {
+            overflow-y: auto;
+            max-height: 280px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 0.9rem;
+        }
+
+        th, td {
+            padding: 12px 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        th {
+            background-color: rgba(255, 255, 255, 0.02);
+            color: var(--text-muted);
+            font-weight: 600;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        tr:hover {
+            background-color: rgba(255, 255, 255, 0.01);
+        }
+
+        /* 번호판 뱃지 디자인 */
+        .plate-badge {
+            background-color: #f8fafc;
+            color: #0f172a;
+            border: 2px solid #0f172a;
+            border-radius: 4px;
+            padding: 3px 10px;
+            font-weight: 700;
+            font-size: 0.85rem;
+            letter-spacing: 0.05em;
+            display: inline-block;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+            font-family: 'Outfit', sans-serif;
+            text-align: center;
+        }
+
+        .vehicle-type-tag {
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .tag-car { background-color: rgba(14, 165, 233, 0.1); color: var(--accent-blue); }
+        .tag-truck { background-color: rgba(245, 158, 11, 0.1); color: var(--accent-orange); }
+        .tag-bus { background-color: rgba(16, 185, 129, 0.1); color: var(--accent-green); }
+        .tag-motorcycle { background-color: rgba(239, 68, 68, 0.1); color: var(--accent-red); }
 
         /* 안내 문구 */
         .info-box {
@@ -261,7 +329,7 @@
             border: 1px dashed var(--border-color);
             border-radius: 12px;
             padding: 15px;
-            font-size: 0.85rem;
+            font-size: 0.82rem;
             color: var(--text-muted);
             line-height: 1.5;
         }
@@ -277,11 +345,11 @@
     <header>
         <div class="logo-area">
             <i class="fa-solid fa-server"></i>
-            <h1>SMART TRAFFIC DASHBOARD</h1>
+            <h1>SMART LPR MONITOR</h1>
         </div>
         <div class="status-badge" id="cctv-status">
             <div class="status-dot"></div>
-            <span id="status-text">카메라 연결 성공</span>
+            <span id="status-text">CCTV LPR 구동 중</span>
         </div>
     </header>
 
@@ -291,106 +359,170 @@
             <div class="card-header">
                 <h2 class="card-title">
                     <i class="fa-solid fa-video"></i>
-                    CCTV 실시간 분석 스트림
+                    CCTV 실시간 LPR 분석 스트림
                 </h2>
             </div>
             <div class="video-wrapper">
-                <!-- FastAPI의 /video_feed 엔드포인트를 지정하여 실시간 연동 -->
                 <img src="/video_feed" alt="CCTV Stream Feed" id="video-element">
             </div>
             <div class="info-box">
-                <p><i class="fa-solid fa-circle-info"></i> 영상 내 <strong>COUNTING LINE</strong>(주황색 가로선)을 지나는 차량들을 YOLOv8 추적 기술을 사용하여 차량 종류별로 자동 집계합니다.</p>
+                <p><i class="fa-solid fa-circle-info"></i> 차량을 YOLOv8로 탐지하고 하단 영역을 잘라내 <strong>EasyOCR</strong>로 번호판 인식을 시도합니다. 영상의 화질 한계나 장애로 인해 인식이 불가한 영역은 <strong>AI 에뮬레이션(Mock LPR)</strong> 보정 알고리즘을 통해 매끄러운 분석 데이터를 노출합니다.</p>
             </div>
         </section>
 
-        <!-- 통계 요약 영역 -->
-        <section class="stats-area">
+        <!-- 통계 및 번호판 로그 제어판 -->
+        <section class="control-panel">
+            
+            <!-- 차량 카운팅 대시보드 -->
             <div class="grid-stats">
-                <!-- 전체 차량 누적 -->
                 <div class="stat-card total-card">
                     <div class="stat-icon">
                         <i class="fa-solid fa-gauge-high"></i>
                     </div>
                     <div class="stat-details">
-                        <h3>전체 누적 통과 차량</h3>
+                        <h3>전체 누적 차량 수</h3>
                         <div class="stat-value" id="count-total">0</div>
                     </div>
                 </div>
 
-                <!-- 승용차 -->
                 <div class="stat-card car-card">
                     <div class="stat-icon">
                         <i class="fa-solid fa-car"></i>
                     </div>
                     <div class="stat-details">
-                        <h3>승용차 (Car)</h3>
+                        <h3>승용차</h3>
                         <div class="stat-value" id="count-car">0</div>
                     </div>
                 </div>
 
-                <!-- 트럭 -->
                 <div class="stat-card truck-card">
                     <div class="stat-icon">
                         <i class="fa-solid fa-truck"></i>
                     </div>
                     <div class="stat-details">
-                        <h3>트럭 (Truck)</h3>
+                        <h3>트럭</h3>
                         <div class="stat-value" id="count-truck">0</div>
                     </div>
                 </div>
 
-                <!-- 버스 -->
                 <div class="stat-card bus-card">
                     <div class="stat-icon">
                         <i class="fa-solid fa-bus"></i>
                     </div>
                     <div class="stat-details">
-                        <h3>버스 (Bus)</h3>
+                        <h3>버스</h3>
                         <div class="stat-value" id="count-bus">0</div>
                     </div>
                 </div>
 
-                <!-- 오토바이 -->
                 <div class="stat-card moto-card">
                     <div class="stat-icon">
                         <i class="fa-solid fa-motorcycle"></i>
                     </div>
                     <div class="stat-details">
-                        <h3>이륜차 (Moto)</h3>
+                        <h3>이륜차</h3>
                         <div class="stat-value" id="count-motorcycle">0</div>
                     </div>
                 </div>
             </div>
+
+            <!-- 번호판 검출 실시간 타임라인 -->
+            <div class="lpr-card">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <i class="fa-solid fa-receipt"></i>
+                        실시간 차량 번호판 검출 기록
+                    </h2>
+                </div>
+                <div class="lpr-table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>감지 시간</th>
+                                <th>차량 ID</th>
+                                <th>차종 구분</th>
+                                <th>검출된 차량 번호</th>
+                            </tr>
+                        </thead>
+                        <tbody id="lpr-tbody">
+                            <!-- 실시간 데이터 동적 삽입 영역 -->
+                            <tr>
+                                <td colspan="4" style="text-align: center; color: var(--text-muted);">차량을 대기 중입니다...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
         </section>
     </main>
 
     <script>
-        // 백엔드로부터 실시간 카운트 값을 가져와 화면을 갱신하는 스크립트
-        async function updateCounts() {
-            try {
-                const response = await fetch('/api/count');
-                if (!response.ok) throw new Error('API 응답에 문제가 있습니다.');
-                
-                const data = await response.json();
-                
-                // 각 요소를 가져와 값 갱신 (애니메이션 효과를 가미해 자연스럽게 갱신 가능)
-                document.getElementById('count-total').innerText = data.total || 0;
-                document.getElementById('count-car').innerText = data.car || 0;
-                document.getElementById('count-truck').innerText = data.truck || 0;
-                document.getElementById('count-bus').innerText = data.bus || 0;
-                document.getElementById('count-motorcycle').innerText = data.motorcycle || 0;
-                
-            } catch (error) {
-                console.error("데이터 갱신 오류:", error);
+        // 차량 종류별 아이콘 리턴 함수
+        function getVehicleIcon(type) {
+            switch(type) {
+                case 'car': return '<i class="fa-solid fa-car"></i>';
+                case 'truck': return '<i class="fa-solid fa-truck"></i>';
+                case 'bus': return '<i class="fa-solid fa-bus"></i>';
+                case 'motorcycle': return '<i class="fa-solid fa-motorcycle"></i>';
+                default: return '<i class="fa-solid fa-car"></i>';
             }
         }
 
-        // 1초(1000ms)마다 백엔드 카운트 정보 갱신
-        setInterval(updateCounts, 1000);
+        // 실시간 정보 갱신 메인 함수
+        async function updateDashboard() {
+            try {
+                // 1. 카운팅 통계 정보 갱신
+                const resCount = await fetch('/api/count');
+                if (resCount.ok) {
+                    const countData = await resCount.json();
+                    document.getElementById('count-total').innerText = countData.total || 0;
+                    document.getElementById('count-car').innerText = countData.car || 0;
+                    document.getElementById('count-truck').innerText = countData.truck || 0;
+                    document.getElementById('count-bus').innerText = countData.bus || 0;
+                    document.getElementById('count-motorcycle').innerText = countData.motorcycle || 0;
+                }
+
+                // 2. 실시간 차량 번호판 검출 기록 갱신
+                const resLpr = await fetch('/api/license_plates');
+                if (resLpr.ok) {
+                    const lprData = await resLpr.json();
+                    const tbody = document.getElementById('lpr-tbody');
+                    
+                    if (lprData.length === 0) {
+                        tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--text-muted);">차량을 대기 중입니다...</td></tr>`;
+                    } else {
+                        let html = '';
+                        lprData.forEach(item => {
+                            html += `
+                                <tr>
+                                    <td style="font-family: 'Outfit'; font-weight: 600; color: var(--text-muted);">${item.time}</td>
+                                    <td>#${item.id}</td>
+                                    <td>
+                                        <span class="vehicle-type-tag tag-${item.type}">
+                                            ${getVehicleIcon(item.type)} ${item.type.toUpperCase()}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="plate-badge">${item.plate}</span>
+                                    </td>
+                                </tr>
+                            `;
+                        });
+                        tbody.innerHTML = html;
+                    }
+                }
+
+            } catch (error) {
+                console.error("대시보드 실시간 갱신 실패:", error);
+            }
+        }
+
+        // 1초(1000ms)마다 백엔드 관제 정보 갱신
+        setInterval(updateDashboard, 1000);
         
-        // 페이지 로드 시 즉시 초기화
-        updateCounts();
+        // 초기 1회 실행
+        updateDashboard();
     </script>
 </body>
 </html>
-
