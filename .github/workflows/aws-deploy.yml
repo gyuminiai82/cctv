@@ -21,6 +21,16 @@ jobs:
         key: ${{ secrets.EC2_SSH_KEY }}
         script_stop: true
         script: |
+          # 메모리 부족(OOM) 방지를 위한 Swap 파일 2GB 생성 (프리티어 필수)
+          if [ ! -f /swapfile ]; then
+            echo "Creating 2GB swap file to prevent OOM..."
+            sudo fallocate -l 2G /swapfile || sudo dd if=/dev/zero of=/swapfile bs=1M count=2048
+            sudo chmod 600 /swapfile
+            sudo mkswap /swapfile
+            sudo swapon /swapfile
+            echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+          fi
+          
           cd /home/ubuntu
           if [ ! -d "port_cctv/.git" ]; then
             echo "Git repository not found. Cloning..."
