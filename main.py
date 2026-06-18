@@ -14,44 +14,38 @@ templates = Jinja2Templates(directory=templates_dir)
 
 def generate_frames():
     """
-    웹캠에서 프레임을 읽어와 JPEG로 인코딩한 후 yield하는 제너레이터 함수.
-    C310 카메라를 연결할 때는 VideoCapture(0)의 0을 
-    적절한 카메라 인덱스 번호나 RTSP 주소로 변경하시면 됩니다.
+    Tapo C310 등의 IP 카메라에서 RTSP 스트림을 읽어와 JPEG로 변환 후 전송합니다.
+    현재는 C310이 연결되지 않은 상태이므로, 인터넷상의 오픈된 테스트용 RTSP 주소를 기본값으로 사용합니다.
     """
-    # 기본 카메라(0번) 사용 시도
-    camera = cv2.VideoCapture(0)
+    # 테스트용 오픈 RTSP (유명한 Big Buck Bunny 애니메이션 테스트 스트림)
+    # 실제 C310 사용 시: "rtsp://아이디:비밀번호@192.168.x.x:554/stream1" 로 변경
+    RTSP_URL = os.getenv("RTSP_URL", "rtsp://wowzaec2demo.streamlock.net/vod/mp4:BigBuckBunny_115k.mp4")
     
-    # 카메라가 연결되어 있지 않거나 열리지 않는 경우 더미(Placeholder) 영상 스트리밍
-    if not camera.isOpened() or not camera.read()[0]:
-        print("⚠️ 카메라를 찾을 수 없습니다. 테스트용 더미 화면을 송출합니다.")
+    print(f"🎥 RTSP 스트림 연결 시도 중: {RTSP_URL}")
+    camera = cv2.VideoCapture(RTSP_URL)
+    
+    # RTSP 스트림 접속 실패 또는 지연 시 더미 영상 송출
+    if not camera.isOpened():
+        print("⚠️ RTSP 서버 연결에 실패했습니다. 테스트용 더미 화면을 송출합니다.")
         while True:
-            # 검은색 빈 화면 생성 (가로 640, 세로 480)
             frame = np.zeros((480, 640, 3), dtype=np.uint8)
-            
-            # 안내 문구 삽입
-            cv2.putText(frame, "No Camera Detected", (130, 220), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 0, 255), 2)
-            cv2.putText(frame, "Waiting for C310...", (180, 280), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 255, 255), 2)
-            
-            # 이미지를 JPEG 포맷으로 인코딩
+            cv2.putText(frame, "RTSP Connection Failed", (100, 220), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 255), 2)
+            cv2.putText(frame, "Check Network or Camera", (120, 280), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 255, 255), 2)
             ret, buffer = cv2.imencode('.jpg', frame)
-            frame_bytes = buffer.tobytes()
-            
-            yield (b'--frame\r\n'
-                   b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
-            
-            # 과부하 방지 (1초에 1프레임 송출)
+            yield (b'--frame\r\n' b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
             time.sleep(1)
             
-    # 카메라가 정상적으로 연결된 경우 실시간 스트리밍
+    # 정상적으로 RTSP 스트림을 받아오는 경우
     while True:
         success, frame = camera.read()
         if not success:
-            break
-        else:
-            ret, buffer = cv2.imencode('.jpg', frame)
-            frame_bytes = buffer.tobytes()
-            yield (b'--frame\r\n'
-                   b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
+            # 네트워크 불안정으로 프레임이 끊기면 연결을 재시도해야 할 수 있습니다. (간이 처리)
+            print("⚠️ RTSP 프레임 수신 실패. 1초 대기 후 계속 진행...")
+            time.sleep(1)
+            continue
+            
+        ret, buffer = cv2.imencode('.jpg', frame)
+        yield (b'--frame\r\n' b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
                    
     camera.release()
 
